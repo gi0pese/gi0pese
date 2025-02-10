@@ -1,0 +1,52 @@
+from flask import Flask, request, render_template_string
+import xml.etree.ElementTree as ET
+
+app = Flask(__name__)
+
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estrattore di URL da Sitemap</title>
+</head>
+<body>
+    <h2>Carica la tua Sitemap XML</h2>
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" name="sitemap" required>
+        <button type="submit">Estrarre URL</button>
+    </form>
+
+    {% if urls %}
+    <h3>URL Estratti:</h3>
+    <ul>
+        {% for url in urls %}
+        <li>{{ url }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</body>
+</html>
+"""
+
+def extract_urls_from_sitemap(file):
+    try:
+        tree = ET.parse(file)
+        root = tree.getroot()
+        namespace = {'ns': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
+        return [url.text for url in root.findall('.//ns:loc', namespace)]
+    except Exception as e:
+        return [f"Errore: {str(e)}"]
+
+@app.route("/", methods=["GET", "POST"])
+def upload_sitemap():
+    urls = []
+    if request.method == "POST":
+        file = request.files["sitemap"]
+        if file:
+            urls = extract_urls_from_sitemap(file)
+    return render_template_string(HTML_TEMPLATE, urls=urls)
+
+if __name__ == "__main__":
+    app.run(debug=True)
